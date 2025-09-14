@@ -34,10 +34,12 @@ const Report = () => {
 
     let imageUrl = null;
 
-    // อัพโหลดรูปไป Supabase Storage
+    // ✅ อัพโหลดรูปไป Supabase Storage
     if (image) {
-      const fileName = `${Date.now()}_${image.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const ext = image.name.split(".").pop(); // ดึงนามสกุลไฟล์
+      const fileName = `${Date.now()}.${ext}`; // ใช้ timestamp ปลอดภัย
+
+      const { error: uploadError } = await supabase.storage
         .from("problems") // bucket ชื่อ "problems"
         .upload(fileName, image);
 
@@ -48,7 +50,7 @@ const Report = () => {
         return;
       }
 
-      // ดึง public URL
+      // ✅ ดึง public URL
       const { data: publicUrlData } = supabase.storage
         .from("problems")
         .getPublicUrl(fileName);
@@ -56,7 +58,18 @@ const Report = () => {
       imageUrl = publicUrlData.publicUrl;
     }
 
-    // บันทึกลง table
+    // ✅ ดึง user ที่ login อยู่
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("กรุณาเข้าสู่ระบบก่อนแจ้งปัญหา");
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Insert ลงตาราง problems
     const { error } = await supabase.from("problems").insert([
       {
         title,
@@ -64,6 +77,8 @@ const Report = () => {
         image_url: imageUrl,
         latitude: gps.lat || null,
         longitude: gps.lng || null,
+        user_id: user.id,
+        status: "pending",
       },
     ]);
 
