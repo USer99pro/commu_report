@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { supabase } from "../../config/SupabaseClient";
-import { useNavigate } from "react-router-dom"; // ใช้ react-router สำหรับ navigation
+import { useNavigate } from "react-router-dom";
+import {
+  Box,
+  Flex,
+  Heading,
+  Button,
+  Spinner,
+  Text,
+  Stack,
+  Card,
+  CardBody,
+  Divider,
+} from "@chakra-ui/react";
 
-const COLORS = ["#FFBB28", "#0088FE", "#00C49F"]; // pending, in_progress, resolved
+const COLORS = ["#FFBB28", "#0088FE", "#00C49F"];
 const STATUS_LABELS = {
   pending: "รอดำเนินการ",
   in_progress: "กำลังดำเนินการ",
@@ -15,7 +27,7 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState(null);
-  const navigate = useNavigate(); // สำหรับ navigate
+  const navigate = useNavigate();
 
   const fetchProblems = async () => {
     setLoading(true);
@@ -63,32 +75,33 @@ const Dashboard = () => {
     : [];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-
-      {/* ปุ่มไปหน้าเปลี่ยนสถานะ */}
-      <button
-        onClick={() => navigate("/admin/problems-status")}
-        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-      >
-        จัดการสถานะปัญหา
-      </button>
+    <Box p={8} bg="gray.50" minH="100vh">
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">📊 Admin Dashboard</Heading>
+        <Button colorScheme="blue" onClick={() => navigate("/admin/problems-status")}>
+          จัดการสถานะปัญหา
+        </Button>
+      </Flex>
 
       {loading ? (
-        <p>กำลังโหลดข้อมูล...</p>
+        <Flex justify="center" align="center" h="300px">
+          <Spinner size="xl" />
+        </Flex>
       ) : (
-        <>
-          <div className="w-full h-64 mb-6">
+        <Stack spacing={8}>
+          {/* Pie Chart */}
+          <Box w="100%" h="300px" bg="white" borderRadius="lg" shadow="md" p={4}>
             <ResponsiveContainer>
               <PieChart>
                 <Pie
                   data={chartData}
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
+                  outerRadius={100}
                   label
                   dataKey="value"
                   onClick={handleClickSlice}
+                  cursor="pointer"
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={index} fill={COLORS[index % COLORS.length]} />
@@ -96,37 +109,38 @@ const Dashboard = () => {
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </Box>
 
+          {/* Filtered Problems List */}
           {selectedStatus && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">
+            <Box>
+              <Heading size="md" mb={4}>
                 รายการปัญหา: {STATUS_LABELS[selectedStatus]}
-              </h2>
+              </Heading>
               {filteredProblems.length === 0 ? (
-                <p className="text-gray-600">ไม่มีปัญหาสถานะนี้</p>
+                <Text color="gray.500">ไม่มีปัญหาสถานะนี้</Text>
               ) : (
-                <ul className="space-y-4">
+                <Stack spacing={4}>
                   {filteredProblems.map((p) => (
-                    <li
-                      key={p.id}
-                      className="p-4 border rounded shadow bg-white"
-                    >
-                      <h3 className="font-semibold">{p.title}</h3>
-                      <p>{p.description}</p>
-                      <p className="text-sm text-gray-500">
-                        User ID: {p.user_id} | วันที่แจ้ง:{" "}
-                        {new Date(p.created_at).toLocaleString()}
-                      </p>
-                    </li>
+                    <Card key={p.id} shadow="sm" borderWidth="1px">
+                      <CardBody>
+                        <Heading size="sm" mb={2}>{p.title}</Heading>
+                        <Text mb={2}>{p.description}</Text>
+                        <Divider my={2} />
+                        <Text fontSize="sm" color="gray.500">
+                          User ID: {p.user_id} | วันที่แจ้ง:{" "}
+                          {new Date(p.created_at).toLocaleString()}
+                        </Text>
+                      </CardBody>
+                    </Card>
                   ))}
-                </ul>
+                </Stack>
               )}
-            </div>
+            </Box>
           )}
-        </>
+        </Stack>
       )}
-    </div>
+    </Box>
   );
 };
 
