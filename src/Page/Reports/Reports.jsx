@@ -1,21 +1,51 @@
 import { useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { supabase } from "../../config/SupabaseClient";
+
+const bucketName = "problems"; // bucket สำหรับรูป
+
+const LocationPicker = ({ gps, setGps }) => {
+  useMapEvents({
+    click(e) {
+      setGps({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
+  });
+
+  return (
+    <Marker
+      draggable
+      eventHandlers={{
+        dragend: (e) => {
+          const { lat, lng } = e.target.getLatLng();
+          setGps({ lat, lng });
+        },
+      }}
+      position={[gps.lat, gps.lng]}
+    >
+      <Popup>ตำแหน่งที่เลือก</Popup>
+    </Marker>
+  );
+};
 
 const Report = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
-  const [gps, setGps] = useState({ lat: "", lng: "" });
   const [loading, setLoading] = useState(false);
+  const [gps, setGps] = useState({ lat: 13.7563, lng: 100.5018 });
 
   const handleGetLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setGps({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          });
+          setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         (err) => {
           alert("ไม่สามารถดึงพิกัดได้: " + err.message);
@@ -34,13 +64,12 @@ const Report = () => {
 
     let imageUrl = null;
 
-    // ✅ อัพโหลดรูปไป Supabase Storage
+    // อัพโหลดรูปไป Supabase Storage
     if (image) {
-      const ext = image.name.split(".").pop(); // ดึงนามสกุลไฟล์
-      const fileName = `${Date.now()}.${ext}`; // ใช้ timestamp ปลอดภัย
-
+      const ext = image.name.split(".").pop();
+      const fileName = `${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from("problems") // bucket ชื่อ "problems"
+        .from(bucketName)
         .upload(fileName, image);
 
       if (uploadError) {
@@ -50,34 +79,32 @@ const Report = () => {
         return;
       }
 
-      // ✅ ดึง public URL
       const { data: publicUrlData } = supabase.storage
-        .from("problems")
+        .from(bucketName)
         .getPublicUrl(fileName);
 
       imageUrl = publicUrlData.publicUrl;
     }
 
-    // ✅ ดึง user ที่ login อยู่
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // ดึง user ปัจจุบัน
+    const { data, error: userError } = await supabase.auth.getUser();
+    const user = data?.user;
 
-    if (!user) {
+    if (userError || !user) {
       alert("กรุณาเข้าสู่ระบบก่อนแจ้งปัญหา");
       setLoading(false);
       return;
     }
 
-    // ✅ Insert ลงตาราง problems
+    // Insert ลงตาราง problems (RLS ต้องการ user_id ตรงกับ auth.uid)
     const { error } = await supabase.from("problems").insert([
       {
         title,
         description,
         image_url: imageUrl,
-        latitude: gps.lat || null,
-        longitude: gps.lng || null,
-        user_id: user.id,
+        latitude: gps.lat,
+        longitude: gps.lng,
+        user_id: user.id, // ใช้ id ตัวเล็กถูกต้อง
         status: "pending",
       },
     ]);
@@ -92,14 +119,15 @@ const Report = () => {
       setTitle("");
       setDescription("");
       setImage(null);
-      setGps({ lat: "", lng: "" });
     }
   };
 
   return (
-    <div>
+    <div className="space-y-4">
       <h2 className="text-xl font-bold mb-4">แจ้งปัญหา</h2>
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+
+      {/* ฟอร์ม */}
+      <form onSubmit={handleSubmit} className="space-y-3 max-w-lg">
         <input
           type="text"
           className="w-full border p-2 rounded"
@@ -107,14 +135,12 @@ const Report = () => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-
         <textarea
           className="w-full border p-2 rounded"
           placeholder="รายละเอียดปัญหา..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-
         <input
           type="file"
           accept="image/*"
@@ -152,6 +178,21 @@ const Report = () => {
           {loading ? "กำลังส่ง..." : "ส่งปัญหา"}
         </button>
       </form>
+
+      {/* แผนที่ */}
+      <div style={{ height: "400px" }}>
+        <MapContainer
+          center={[gps.lat, gps.lng]}
+          zoom={14}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; OpenStreetMap contributors'
+          />
+          <LocationPicker gps={gps} setGps={setGps} />
+        </MapContainer>
+      </div>
     </div>
   );
 };
