@@ -2,31 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { supabase } from "../../config/SupabaseClient";
 import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Flex,
-  Heading,
-  Button,
-  Spinner,
-  Text,
-  Stack,
-  Card,
-  CardBody,
-  Divider,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Badge,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-  ModalFooter,
-} from "@chakra-ui/react";
-import { SearchIcon } from "@chakra-ui/icons";
 
 const COLORS = ["#FFBB28", "#0088FE", "#00C49F"];
 const STATUS_LABELS = {
@@ -34,10 +9,10 @@ const STATUS_LABELS = {
   in_progress: "กำลังดำเนินการ",
   resolved: "เสร็จสิ้น",
 };
-const STATUS_BADGE_COLOR = {
-  pending: "orange",
-  in_progress: "blue",
-  resolved: "green",
+const STATUS_COLOR = {
+  pending: "bg-orange-100 text-orange-800",
+  in_progress: "bg-blue-100 text-blue-800",
+  resolved: "bg-green-100 text-green-800",
 };
 
 const Dashboard = ({ problemId }) => {
@@ -47,32 +22,24 @@ const Dashboard = ({ problemId }) => {
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedProblem, setSelectedProblem] = useState(null);
+  const problemsRef = useRef(null);
   const navigate = useNavigate();
 
-  const problemsRef = useRef(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  // ฟังก์ชันดึงข้อมูลปัญหาเฉพาะ id
   const fetchProblems = async () => {
     setLoading(true);
     try {
-      const query = supabase
+      let query = supabase
         .from("problems")
         .select("id, title, description, status, created_at")
         .order("created_at", { ascending: false });
 
-      // ถ้ามี problemId ให้ filter
-      if (problemId) {
-        query.eq("id", problemId);
-      }
+      if (problemId) query = query.eq("id", problemId);
 
       const { data, error } = await query;
-
       if (error) throw error;
 
       setProblems(data || []);
 
-      // สร้าง chart
       const counts = (data || []).reduce(
         (acc, p) => {
           acc[p.status] = (acc[p.status] || 0) + 1;
@@ -125,28 +92,28 @@ const Dashboard = ({ problemId }) => {
     return (p.title || "").toLowerCase().includes(s) || (p.description || "").toLowerCase().includes(s);
   });
 
-  const openDetail = (p) => {
-    setSelectedProblem(p);
-    onOpen();
-  };
-
   return (
-    <Box p={8} bg="gray.50" minH="100vh" maxW="1100px" mx="auto">
-      <Flex justify="space-between" align="center" mb={6}>
-        <Heading size="lg">📊 Admin Dashboard</Heading>
-        <Button colorScheme="blue" onClick={() => navigate("/admin/problems-status")}>
+    <div className="p-8 bg-gray-50 min-h-screen max-w-[1200px] mx-auto">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">📊 Admin Dashboard</h1>
+        <button
+          onClick={() => navigate("/admin/problems-status")}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+        >
           จัดการสถานะปัญหา
-        </Button>
-      </Flex>
+        </button>
+      </div>
 
+      {/* Loading */}
       {loading ? (
-        <Flex justify="center" align="center" h="300px">
-          <Spinner size="xl" />
-        </Flex>
+        <div className="flex justify-center items-center h-[300px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-200"></div>
+        </div>
       ) : (
-        <Stack spacing={8}>
+        <div className="space-y-8">
           {/* Pie Chart */}
-          <Box w="100%" h="320px" bg="white" borderRadius="lg" shadow="md" p={4}>
+          <div className="w-full h-[320px] bg-white rounded-lg shadow-md p-4">
             <ResponsiveContainer>
               <PieChart>
                 <Pie
@@ -160,118 +127,125 @@ const Dashboard = ({ problemId }) => {
                   cursor="pointer"
                 >
                   {chartData.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={COLORS[index % COLORS.length]}
-                      stroke={entry.status === selectedStatus ? "black" : "none"}
-                      strokeWidth={entry.status === selectedStatus ? 3 : 0}
-                    />
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} stroke="none" />
                   ))}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-          </Box>
+          </div>
 
-          {/* Problems List */}
+          {/* Problems Table */}
           {selectedStatus && (
-            <Box ref={problemsRef} bg="white" p={4} borderRadius="lg" shadow="sm">
-              <Flex justify="space-between" align="center" mb={4}>
-                <Heading size="md">รายการปัญหา: {STATUS_LABELS[selectedStatus]}</Heading>
-                <InputGroup w="400px">
-                  <InputLeftElement pointerEvents="none">
-                    <SearchIcon color="gray.400" />
-                  </InputLeftElement>
-                  <Input
-                    placeholder="ค้นหาชื่อหรือคำอธิบาย"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    size="sm"
-                  />
-                </InputGroup>
-              </Flex>
+            <div ref={problemsRef} className="overflow-x-auto bg-white rounded-lg shadow-sm p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">{`รายการปัญหา: ${STATUS_LABELS[selectedStatus]}`}</h2>
+                <div className="w-[400px]">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="ค้นหาชื่อหรือคำอธิบาย"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full pl-10 pr-2 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <div className="absolute left-3 top-2.5 text-gray-400">
+                      🔍
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {displayedProblems.length === 0 ? (
-                <Text color="gray.500">ไม่มีปัญหาสถานะนี้</Text>
+                <p className="text-gray-500">ไม่มีปัญหาสถานะนี้</p>
               ) : (
-                <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(280px, 1fr))" gap={4}>
-                  {displayedProblems.map((p) => (
-                    <Card
-                      key={p.id}
-                      bg={p.status === "pending" ? "orange.50" : p.status === "in_progress" ? "blue.50" : "green.50"}
-                      borderWidth="1px"
-                      borderColor={p.status === selectedStatus ? "blue.300" : "gray.200"}
-                      boxShadow="sm"
-                      _hover={{ transform: "translateY(-3px)", boxShadow: "md" }}
-                      transition="all 0.2s"
-                    >
-                      <CardBody>
-                        <Heading size="sm" mb={2} noOfLines={2}>{p.title}</Heading>
-                        <Text noOfLines={3} mb={3}>{p.description}</Text>
-
-                        <Flex align="center" justify="space-between" mb={2}>
-                          <Badge colorScheme={STATUS_BADGE_COLOR[p.status]}>
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-teal-500 text-white">
+                    <tr>
+                      <th className="px-4 py-2 text-center">ชื่อปัญหา</th>
+                      <th className="px-4 py-2 text-center">คำอธิบาย</th>
+                      <th className="px-4 py-2 text-center">สถานะ</th>
+                      <th className="px-4 py-2 text-center">วันที่แจ้ง</th>
+                      <th className="px-4 py-2 text-center">การกระทำ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {displayedProblems.map((p) => (
+                      <tr key={p.id} className="even:bg-gray-100 hover:bg-gray-50">
+                        <td className="px-4 py-2 text-center">{p.title}</td>
+                        <td className="px-4 py-2 text-center">{p.description}</td>
+                        <td className="px-4 py-2 text-center">
+                          <span className={`px-2 py-1 rounded-full text-xs ${STATUS_COLOR[p.status]}`}>
                             {STATUS_LABELS[p.status]}
-                          </Badge>
-                          <Text fontSize="xs" color="gray.500">
-                            แจ้ง: {new Date(p.created_at).toLocaleString()}
-                          </Text>
-                        </Flex>
-
-                        <Flex justify="space-between" flexWrap="wrap" gap={2}>
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-center">{new Date(p.created_at).toLocaleString()}</td>
+                        <td className="px-4 py-2 text-center flex justify-center gap-2 flex-wrap">
+                          <button
+                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                            onClick={() => setSelectedProblem(p)}
+                          >
+                            รายละเอียด
+                          </button>
                           {p.status === "pending" && (
-                            <Button size="sm" colorScheme="blue" onClick={() => handleStatusChange(p.id, "in_progress")}>
+                            <button
+                              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                              onClick={() => handleStatusChange(p.id, "in_progress")}
+                            >
                               Approve
-                            </Button>
+                            </button>
                           )}
                           {p.status !== "resolved" && (
-                            <Button size="sm" colorScheme="green" onClick={() => handleStatusChange(p.id, "resolved")}>
+                            <button
+                              className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                              onClick={() => handleStatusChange(p.id, "resolved")}
+                            >
                               Resolve
-                            </Button>
+                            </button>
                           )}
-                          <Button size="sm" variant="outline" onClick={() => openDetail(p)}>
-                            ดูรายละเอียด
-                          </Button>
-                        </Flex>
-                      </CardBody>
-                    </Card>
-                  ))}
-                </Box>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
-            </Box>
+            </div>
           )}
-        </Stack>
+        </div>
       )}
 
       {/* Modal */}
-      <Modal isOpen={isOpen} onClose={() => { setSelectedProblem(null); onClose(); }} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>รายละเอียดปัญหา</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {selectedProblem && (
-              <>
-                <Heading size="sm" mb={2}>{selectedProblem.title}</Heading>
-                <Badge mb={3} colorScheme={STATUS_BADGE_COLOR[selectedProblem.status]}>
-                  {STATUS_LABELS[selectedProblem.status]}
-                </Badge>
-                <Text mb={4} whiteSpace="pre-wrap">{selectedProblem.description}</Text>
-                <Divider mb={3} />
-                <Text fontSize="sm" color="gray.500">
-                  วันที่แจ้ง: {new Date(selectedProblem.created_at).toLocaleString()}
-                </Text>
-              </>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={() => { setSelectedProblem(null); onClose(); }}>
-              ปิด
-            </Button>
-            <Button colorScheme="blue" onClick={onClose}>ทำต่อ</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Box>
+      {selectedProblem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-yellow-100 rounded-lg shadow-lg max-w-xl w-full p-6 animate-slide-in">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-yellow-800">รายละเอียดปัญหา</h3>
+              <button
+                onClick={() => setSelectedProblem(null)}
+                className="text-yellow-800 font-bold text-xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-4 shadow">
+              <h4 className="text-md font-semibold mb-2 text-yellow-800">{selectedProblem.title}</h4>
+              <span className={`px-2 py-1 rounded-full text-xs mb-3 inline-block ${STATUS_COLOR[selectedProblem.status]}`}>
+                {STATUS_LABELS[selectedProblem.status]}
+              </span>
+              <p className="mb-4 text-gray-700 whitespace-pre-wrap">{selectedProblem.description}</p>
+              <p className="text-sm text-gray-500">วันที่แจ้ง: {new Date(selectedProblem.created_at).toLocaleString()}</p>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
+                onClick={() => setSelectedProblem(null)}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

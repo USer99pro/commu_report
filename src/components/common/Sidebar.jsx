@@ -10,10 +10,6 @@ const Sidebar = () => {
           <HomeIcon className="w-5 h-5" />
           Dashboard
         </Link>
-        <Link to="/admin/reports" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded">
-          <ChartBarIcon className="w-5 h-5" />
-          Reports
-        </Link>
       </nav>
     </aside>
   );

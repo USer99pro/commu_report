@@ -6,37 +6,30 @@ const AdminProblemsStatus = () => {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProblems = async () => {
-    setLoading(true);
+const fetchProblems = async () => {
+  setLoading(true);
 
-    // ดึงปัญหา
-    const { data: problemsData, error: problemsError } = await supabase
-      .from("problems")
-      .select("id, title, description, status, created_at, user_id")
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_problems_with_user_full");
 
-    if (problemsError) {
-      console.error(problemsError);
-      setLoading(false);
-      return;
-    }
+  if (error) {
+    console.error(error);
+    setLoading(false);
+    return;
+  }
 
-    // ดึง profiles (public table ของคุณ)
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, full_name, email");
+  setProblems(data);
+  setLoading(false);
 
-    if (profilesError) {
-      console.error(profilesError);
-      setLoading(false);
-      return;
-    }
 
-    // รวมปัญหากับชื่อ user
+    // รวมข้อมูลแต่ไม่เก็บ user_id
     const merged = problemsData.map((p) => {
       const user = profilesData.find((u) => u.id === p.user_id);
       return {
-        ...p,
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        status: p.status,
+        created_at: p.created_at,
         user_name: user?.full_name || "ไม่ระบุ",
         user_email: user?.email || "-",
       };
@@ -50,7 +43,6 @@ const AdminProblemsStatus = () => {
     fetchProblems();
   }, []);
 
-  // เปลี่ยนสถานะ
   const updateStatus = async (id, newStatus) => {
     const { error } = await supabase
       .from("problems")

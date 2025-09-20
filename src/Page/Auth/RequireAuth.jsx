@@ -1,5 +1,12 @@
-import { useState } from "react";
-import {MapContainer,TileLayer,Marker, Popup,useMapEvents} from "react-leaflet";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";  // เพิ่ม
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "../../config/SupabaseClient";
 
@@ -29,11 +36,24 @@ const LocationPicker = ({ gps, setGps }) => {
 };
 
 const Report = () => {
+  const navigate = useNavigate(); // เพิ่ม
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [gps, setGps] = useState({ lat: 13.7563, lng: 100.5018 });
+
+  // ✅ เช็ค user ก่อน render หน้า
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) {
+        // ไม่มี user → ส่งไปหน้า login
+        navigate("/register"); // เปลี่ยน path เป็นของคุณเอง
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const handleGetLocation = () => {
     if (navigator.geolocation) {
@@ -80,7 +100,7 @@ const Report = () => {
       imageUrl = publicUrlData.publicUrl;
     }
 
-    // ดึง user ปัจจุบัน
+    // ดึง user ปัจจุบันอีกครั้งเพื่อ insert
     const { data, error: userError } = await supabase.auth.getUser();
     const user = data?.user;
 
@@ -90,7 +110,6 @@ const Report = () => {
       return;
     }
 
-    // Insert ลงตาราง problems (RLS ต้องการ user_id ตรงกับ auth.uid)
     const { error } = await supabase.from("problems").insert([
       {
         title,
@@ -98,7 +117,7 @@ const Report = () => {
         image_url: imageUrl,
         latitude: gps.lat,
         longitude: gps.lng,
-        user_id: user.id, // ใช้ id ตัวเล็กถูกต้อง
+        user_id: user.id,
         status: "pending",
       },
     ]);

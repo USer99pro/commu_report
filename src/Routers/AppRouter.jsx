@@ -20,13 +20,14 @@ const AppRoutes = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/Reset-Password" element={<ResetPassword />} />
-        <Route path="/admin/problems-status" element={<AdminProblemsStatus />} />
+
         <Route path="Login" element={<LoginPage />} /> 
 
       </Route>
 
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="/admin/problems-status" element={<AdminProblemsStatus />} />
       </Route>
     </Routes>
   );
