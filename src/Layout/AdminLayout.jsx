@@ -5,9 +5,9 @@ import AuthMiddleware from "../../src/Page/Auth/AuthMiddlewar";
 const AdminLayout = () => {
   return (
     <div className="flex min-h-screen">
-      <AuthMiddleware >
+      {/* <AuthMiddleware > */}
           <Sidebar />
-      </AuthMiddleware>
+      {/* </AuthMiddleware> */}
       <main className="flex-1 p-6 bg-gray-100">
         <Outlet />
       </main>

@@ -1,4 +1,3 @@
-// AdminProblemsStatus.jsx
 import { useEffect, useState } from "react";
 import { supabase } from "../../config/SupabaseClient";
 
@@ -6,37 +5,31 @@ const AdminProblemsStatus = () => {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-const fetchProblems = async () => {
-  setLoading(true);
+  const fetchProblems = async () => {
+    setLoading(true);
 
-  const { data, error } = await supabase.rpc("get_problems_with_user_full");
+    try {
+      const { data, error } = await supabase.rpc("get_problems_full_join");
 
-  if (error) {
-    console.error(error);
-    setLoading(false);
-    return;
-  }
+      if (error) throw error;
 
-  setProblems(data);
-  setLoading(false);
-
-
-    // รวมข้อมูลแต่ไม่เก็บ user_id
-    const merged = problemsData.map((p) => {
-      const user = profilesData.find((u) => u.id === p.user_id);
-      return {
-        id: p.id,
+      // map ข้อมูลให้เรียบร้อย
+      const merged = data.map((p) => ({
+        id: p.problem_id,
         title: p.title,
         description: p.description,
         status: p.status,
         created_at: p.created_at,
-        user_name: user?.full_name || "ไม่ระบุ",
-        user_email: user?.email || "-",
-      };
-    });
+        user_name: p.user_name || "ไม่ระบุ",
+        user_email: p.user_email || "-",
+      }));
 
-    setProblems(merged);
-    setLoading(false);
+      setProblems(merged);
+    } catch (error) {
+      console.error("Error fetching problems:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -88,7 +81,7 @@ const fetchProblems = async () => {
                   </div>
                 </td>
                 <td className="border p-2">
-                  {new Date(p.created_at).toLocaleString()}
+                  {p.created_at ? new Date(p.created_at).toLocaleString() : "-"}
                 </td>
                 <td className="border p-2">
                   <select
